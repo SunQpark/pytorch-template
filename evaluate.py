@@ -1,9 +1,9 @@
 import logging
 import torch
 import hydra
+from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from tqdm import tqdm
-from srcs.utils import instantiate
 
 
 logger = logging.getLogger('evaluate')
@@ -11,7 +11,7 @@ logger = logging.getLogger('evaluate')
 @hydra.main(config_path='conf', config_name='evaluate')
 def main(config):
     logger.info('Loading checkpoint: {} ...'.format(config.checkpoint))
-    checkpoint = torch.load(config.checkpoint)
+    checkpoint = torch.load(config.checkpoint, weights_only=False)
 
     loaded_config = OmegaConf.create(checkpoint['config'])
 
@@ -24,13 +24,15 @@ def main(config):
 
     # load trained weights
     state_dict = checkpoint['state_dict']
-    if loaded_config['n_gpu'] > 1:
-        model = torch.nn.DataParallel(model)
+    model = torch.nn.DataParallel(model)
     model.load_state_dict(state_dict)
 
     # instantiate loss and metrics
-    criterion = instantiate(loaded_config.loss, is_func=True)
-    metrics = [instantiate(met, is_func=True) for met in loaded_config.metrics]
+    criterion = instantiate(loaded_config.loss)
+    metrics = {
+        met_name: instantiate(met)
+        for met_name, met in loaded_config.metrics.items()
+    }
 
     # prepare model for testing
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -53,13 +55,14 @@ def main(config):
             loss = criterion(output, target)
             batch_size = data.shape[0]
             total_loss += loss.item() * batch_size
-            for i, metric in enumerate(metrics):
+            for i, metric in enumerate(metrics.values()):
                 total_metrics[i] += metric(output, target) * batch_size
 
     n_samples = len(data_loader.sampler)
     log = {'loss': total_loss / n_samples}
     log.update({
-        met.__name__: total_metrics[i].item() / n_samples for i, met in enumerate(metrics)
+        met_name: total_metrics[i].item() / n_samples
+        for i, met_name in enumerate(metrics.keys())
     })
     logger.info(log)
 

@@ -1,11 +1,12 @@
 import numpy as np
-import hydra
 import torch
 import torch.distributed as dist
+import hydra
+from hydra.utils import instantiate
 from omegaconf import OmegaConf
 from pathlib import Path
 from srcs.trainer import Trainer
-from srcs.utils import instantiate, get_logger
+from srcs.utils import get_logger
 
 
 # fix random seeds for reproducibility
@@ -28,8 +29,11 @@ def train_worker(config):
     logger.info(f'Trainable parameters: {sum([p.numel() for p in trainable_params])}')
 
     # get function handles of loss and metrics
-    criterion = instantiate(config.loss, is_func=True)
-    metrics = [instantiate(met, is_func=True) for met in config['metrics']]
+    criterion = instantiate(config.loss)
+    metrics = {
+        met_name: instantiate(met)
+        for met_name, met in config.metrics.items()
+    }
 
     # build optimizer, learning rate scheduler.
     optimizer = instantiate(config.optimizer, model.parameters())

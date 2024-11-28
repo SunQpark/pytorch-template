@@ -25,7 +25,7 @@ class Trainer(BaseTrainer):
         self.valid_data_loader = valid_data_loader
         self.lr_scheduler = lr_scheduler
 
-        args = ['loss', *[m.__name__ for m in self.metric_ftns]]
+        args = ['loss', *[met_name for met_name in self.metric_ftns.keys()]]
         self.train_metrics = BatchMetrics(*args, postfix='/train', writer=self.writer)
         self.valid_metrics = BatchMetrics(*args, postfix='/valid', writer=self.writer)
 
@@ -53,9 +53,9 @@ class Trainer(BaseTrainer):
 
             if batch_idx % self.log_step == 0:
                 self.writer.add_image('train/input', make_grid(data.cpu(), nrow=8, normalize=True))
-                for met in self.metric_ftns:
+                for met_name, met in self.metric_ftns.items():
                     metric = collect(met(output, target)) # average metric between processes
-                    self.train_metrics.update(met.__name__, metric)
+                    self.train_metrics.update(met_name, metric)
                 self.logger.info(f'Train Epoch: {epoch} {self._progress(batch_idx)} Loss: {loss:.6f}')
 
             if batch_idx == self.len_epoch:
@@ -94,8 +94,8 @@ class Trainer(BaseTrainer):
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx)
                 self.writer.add_image('valid/input', make_grid(data.cpu(), nrow=8, normalize=True))
                 self.valid_metrics.update('loss', collect(loss))
-                for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target))
+                for met_name, met in self.metric_ftns.items():
+                    self.valid_metrics.update(met_name, met(output, target))
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():

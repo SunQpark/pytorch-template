@@ -5,6 +5,7 @@ arch:
   num_classes: 10
 loss:
   _target_: srcs.model.loss.nll_loss
+  _partial_: true
 optimizer:
   _target_: torch.optim.Adam
   lr: ${learning_rate}

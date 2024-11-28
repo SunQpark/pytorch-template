@@ -34,7 +34,7 @@ class BaseTrainer(metaclass=ABCMeta):
         # setup metric monitoring for monitoring model performance and saving best-checkpoint
         self.monitor = cfg_trainer.get('monitor', 'off')
 
-        metric_names = ['loss'] + [met.__name__ for met in self.metric_ftns]
+        metric_names = ['loss'] + list(self.metric_ftns.keys())
         self.ep_metrics = EpochMetrics(metric_names, phases=('train', 'valid'), monitoring=self.monitor)
 
         self.checkpt_top_k = cfg_trainer.get('save_topk', -1)

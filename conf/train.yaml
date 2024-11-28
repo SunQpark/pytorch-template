@@ -3,8 +3,12 @@ save_dir: models/
 log_dir: ${name}/
 
 metrics:
-  - _target_: srcs.model.metric.accuracy
-  - _target_: srcs.model.metric.top_k_acc
+  accuracy:
+    _target_: srcs.model.metric.accuracy
+    _partial_: true
+  top_k_acc:
+    _target_: srcs.model.metric.top_k_acc
+    _partial_: true
 
 defaults:
   - _self_
